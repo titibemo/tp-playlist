@@ -1,0 +1,46 @@
+services:
+  postgres2:
+    image: postgres
+    container_name: postgres2
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: tata
+      POSTGRES_DB: postgres2
+    restart: always
+    # volumes:
+    #   - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - 8020:5432
+    networks:
+      - db_network3
+
+  pgadmin2:
+    image: dpage/pgadmin4
+    container_name: pgadmin2
+    depends_on:
+      - postgres2
+    environment:
+      PMA_HOST: postgres2
+      PGADMIN_DEFAULT_EMAIL: a@a.fr
+      PGADMIN_DEFAULT_PASSWORD: secret
+    ports:
+      - 8021:80
+    volumes:
+      - pgadmin-data3:/var/lib/pgadmin
+    networks:
+      - db_network3
+
+  python2:
+    build: .
+    container_name: python2
+    ports:
+      - 8822:5000
+    networks:
+      - db_network3
+
+volumes:
+  local_pgdata3:
+  pgadmin-data3:
+
+networks:
+  db_network3:
