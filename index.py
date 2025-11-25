@@ -138,6 +138,15 @@ def creer_playlist(user=1):
 
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
+                cur.execute("SELECT id_utilisateur FROM utilisateurs WHERE id_utilisateur = %s", (user,))
+                utilisateur = cur.fetchone()
+
+                if not utilisateur:
+                    print("L'utilisateur spécifié n'existe pas.")
+                    return
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
             cur.execute("SELECT nom_playlist FROM playlists WHERE nom_playlist = %s", (nom,))
             is_new_playlist = cur.fetchone()
 
@@ -161,6 +170,54 @@ def voir_playlist():
                 print(f"id playlist: {playlist[0]}, nom playlist: {playlist[1]}")
     print("=======================")
 
+def supprimer_playlist():
+
+    voir_playlist()
+    playlist_id = input("Choisissez l'id de la playlist à supprimer : ")
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_playlist FROM playlists WHERE id_playlist = %s", (playlist_id,))
+            playlist = cur.fetchone()
+
+            if not playlist:
+                print("Playlist non trouvée.")
+                return
+
+            # Supprimer la playlist
+            cur.execute("DELETE FROM playlists WHERE id_playlist = %s", (playlist_id,))
+            print("🆗 Playlist supprimée avec succès !")
+
+def modifier_playlist():
+    voir_playlist()
+    playlist_id = input("Choisissez l'id de la playlist à modifier : ")
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_playlist FROM playlists WHERE id_playlist = %s", (playlist_id,))
+            playlist = cur.fetchone()
+
+            if not playlist:
+                print("Playlist non trouvée.")
+                return
+
+            nouveau_nom = input("Choisissez un nouveau nom pour la playlist : ")
+
+            cur.execute("SELECT id_playlist FROM playlists WHERE nom_playlist = %s", (nouveau_nom,))
+            existing_playlist = cur.fetchone()
+
+            if existing_playlist:
+                print("Une playlist avec ce nom existe déjà !")
+                return
+
+            cur.execute("""
+                UPDATE playlists
+                SET nom_playlist = %s
+                WHERE id_playlist = %s
+            """, (nouveau_nom, playlist_id))
+
+            print("🆗 Playlist modifiée avec succès !")
+
 
 ############################################### CHANSONS
 def creer_chanson():
@@ -169,7 +226,15 @@ def creer_chanson():
     album = input("choisissez un album : ")
     duree = input("choisissez une durée : ")
     genre = input("choisissez un genre : ")
-    annee_sortie = input("choisissez une année de sortie  : ")
+
+    try:
+        annee_sortie = input("choisissez une année de sortie  : ")
+        if not annee_sortie.isdigit():
+            raise ValueError
+        annee_sortie = int(annee_sortie)
+    except ValueError as e:
+        print(e, "la date est invalide")
+        return
 
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
@@ -180,13 +245,68 @@ def creer_chanson():
 
     print("🆗 Chanson ajoutée !")
 
+def supprimer_chanson():
+    voir_chanson()
+    chanson_id = input("Choisissez l'id de la chanson à supprimer : ")
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id_chanson FROM chansons WHERE id_chanson = %s", (chanson_id,))
+            chanson = cur.fetchone()
+
+            if not chanson:
+                print("Chanson non trouvée.")
+                return
+
+            cur.execute("DELETE FROM chansons WHERE id_chanson = %s", (chanson_id,))
+            print("🆗 Chanson supprimée avec succès !")
+
+def modifier_chanson():
+    voir_chanson()
+    chanson_id = input("Choisissez l'id de la chanson à modifier : ")
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            # Vérifier si la chanson existe
+            cur.execute("SELECT id_chanson FROM chansons WHERE id_chanson = %s", (chanson_id,))
+            chanson = cur.fetchone()
+
+            if not chanson:
+                print("Chanson non trouvée.")
+                return
+    
+    titre = input("choisissez un titre : ")
+    artiste = input("choisissez un artiste : ")
+    album = input("choisissez un album : ")
+    duree = input("choisissez une durée : ")
+    genre = input("choisissez un genre : ")
+
+    try:
+        annee_sortie = input("choisissez une année de sortie  : ")
+        if not annee_sortie.isdigit():
+            raise ValueError
+        annee_sortie = int(annee_sortie)
+    except ValueError as e:
+        print(e, "la date est invalide")
+        return
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                UPDATE chansons SET titre = %s, artiste = %s, album = %s, duree = %s, genre = %s, annee_sortie = %s WHERE id_chanson = %s
+            """, (titre, artiste, album, duree, genre, annee_sortie, chanson_id))
+
+    print("🆗 Chanson ajoutée !")
+
 def voir_chanson():
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT * FROM chansons")
             chansons = cur.fetchall()
-            for chanson in chansons:
-                print(f"id : {chanson[0]}, titre: {chanson[1]}, artiste: {chanson[2]}")
+            if chansons:
+                for chanson in chansons:
+                    print(f"id : {chanson[0]}, titre: {chanson[1]}, artiste: {chanson[2]}")
+            else:
+                print("aucune chanson trouvé")
     print("========== FIN DE LA RECHERCHE =============")
 
 
@@ -260,7 +380,7 @@ def rechercher_playlist(user_input):
 
     print("=======================")
 
-
+########################################### MENU
 def afficher_menu():
     print("\n===== MENU PRINCIPAL =====")
     print("1 - Gérer les utilisateurs")
@@ -283,7 +403,9 @@ def afficher_playlist_menu():
     print("\n===== MENU PLAYLIST =====")
     print("1 - Créer une playlist")
     print("2 - Voir les playlists")
-    print("3 - Voir les chansons associées aux playlists")
+    print("3 - Modifier une playlist")
+    print("4 - Supprimer une playlist")
+    print("5 - Ajouter une chanson a une playlist")
     print("0 - Retour")
     print()
 
@@ -291,6 +413,8 @@ def afficher_chanson_menu():
     print("\n===== MENU CHANSON =====")
     print("1 - Créer une chanson")
     print("2 - Voir les chansons")
+    print("3 - Modifier une chanson")
+    print("4 - Supprimer les chansons")
     print("0 - Retour")
     print()
 
@@ -338,6 +462,10 @@ def ihm():
                         case "2":
                             voir_playlist()
                         case "3":
+                            modifier_playlist()
+                        case "4":
+                            supprimer_playlist()
+                        case "5":
                             ajouter_chanson_playlist()
                         case "0":
                             break
@@ -350,6 +478,10 @@ def ihm():
                             creer_chanson()
                         case "2":
                             voir_chanson()
+                        case "3":
+                            modifier_chanson()
+                        case "4":
+                            supprimer_chanson()
                         case "0":
                             break
             case "4":
