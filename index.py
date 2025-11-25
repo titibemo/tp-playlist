@@ -72,6 +72,67 @@ def init_db():
 
     print("Base initialisée !")
 
+################################################# CRUD UTILISATEURS
+def creer_utilisateur():
+    nom = input("choisissez un nom d'utilisateur : ")
+    email = input("choisissez un email : ")
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email FROM utilisateurs WHERE email = %s", (email,))
+            is_new_user = cur.fetchone()
+
+            if is_new_user:
+                print("Cet email est déjà utilisé, veuillez en choisir un autre !")
+                return
+
+            cur.execute("""
+                INSERT INTO utilisateurs (nom_utilisateur, email)
+                VALUES (%s, %s)
+            """, (nom, email))
+
+    print(" 🆗   Utilisateur ajouté !")
+
+def modifier_utilisateur(id_user):
+    nom = input("choisissez un nouveau nom d'utilisateur : ")
+    email = input("choisissez un nouvel email : ")
+
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT email FROM utilisateurs WHERE email = %s", (email,))
+            is_new_user = cur.fetchone()
+
+            if is_new_user:
+                print("Cet email est déjà utilisé, veuillez en choisir un autre. Modification annulée !")
+                return
+
+            cur.execute("""
+                UPDATE utilisateurs SET nom_utilisateur = %s, email = %s
+                WHERE id_utilisateur = %s;
+            """, (nom, email, id_user))
+
+    print(" 🆗   Utilisateur modifié avec succès !")
+
+def supprimer_utilisateur(id_user):
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                DELETE FROM utilisateurs WHERE id_utilisateur = %s;
+            """, (id_user,))
+
+    print(" 🆗   Utilisateur supprimé avec succès !")
+
+def voir_utilisateur(): 
+    with psycopg.connect(DSN) as conn: 
+        with conn.cursor() as cur: 
+            cur.execute("SELECT id_utilisateur, nom_utilisateur FROM utilisateurs") 
+            utilisateurs = cur.fetchall() 
+            for utilisateur in utilisateurs: 
+                print(f"id utilisateur: {utilisateur[0]}, nom utilisateur: {utilisateur[1]}") 
+            print("===============")
+
+
+################################################ PLAYLIST
 def creer_playlist(user=1):
     nom = input("choisissez un nom pour votre playlist : ")
 
@@ -81,7 +142,7 @@ def creer_playlist(user=1):
             is_new_playlist = cur.fetchone()
 
             if is_new_playlist:
-                print("Une playlist du me^me nom est déjà utilisée !")
+                print("Une playlist avec ce nom existe déjà !")
                 return
 
             cur.execute("""
@@ -89,28 +150,19 @@ def creer_playlist(user=1):
                 VALUES (%s, %s)
             """, (nom, user))
 
-    print("🆗    playlist ajoutée !")
+    print("🆗 Playlist ajoutée !")
 
-def creer_utilisateur():
-    nom = input("choisissez un nom d'utilisateur : ")
-    email = input("choisissez un email : ")
-
+def voir_playlist():
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT email FROM utilisateurs WHERE email = %s", (nom,))
-            is_new_playlist = cur.fetchone()
+            cur.execute("SELECT id_playlist, nom_playlist FROM playlists")
+            playlists = cur.fetchall()
+            for playlist in playlists:
+                print(f"id playlist: {playlist[0]}, nom playlist: {playlist[1]}")
+    print("=======================")
 
-            if is_new_playlist:
-                print("Cet email a déjà été utilisée, veuillez en choisir un autre !")
-                return
 
-            cur.execute("""
-                INSERT INTO utilisateurs (nom_utilisateur, email)
-                VALUES (%s, %s)
-            """, (nom, email))
-
-    print(" 🆗   Utilisateur ajoutée !")
-
+############################################### CHANSONS
 def creer_chanson():
     titre = input("choisissez un titre : ")
     artiste = input("choisissez un artiste : ")
@@ -126,14 +178,24 @@ def creer_chanson():
                 VALUES (%s, %s, %s, %s, %s, %s)
             """, (titre, artiste, album, duree, genre, annee_sortie))
 
+    print("🆗 Chanson ajoutée !")
 
-    print(" 🆗   chanson ajoutée !")
+def voir_chanson():
+    with psycopg.connect(DSN) as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM chansons")
+            chansons = cur.fetchall()
+            for chanson in chansons:
+                print(f"id : {chanson[0]}, titre: {chanson[1]}, artiste: {chanson[2]}")
+    print("========== FIN DE LA RECHERCHE =============")
 
+
+############################################## PLAYLIST-CHANSONS
 def ajouter_chanson_playlist():
     voir_chanson()
     chanson = input("indiquer la chanson à ajouter via son numéro...: ")
     voir_playlist()
-    playlist = input("indiquer le nom de la playlist associé à la chanson, via son numéro...: ")
+    playlist = input("indiquer le nom de la playlist associée à la chanson, via son numéro...: ")
 
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
@@ -142,41 +204,7 @@ def ajouter_chanson_playlist():
                 VALUES (%s, %s)
             """, (chanson, playlist))
 
-
-    print(" 🆗   la chanson a bien été ajouté à votre playlist !")
-
-def voir_utilisateur():
-    with psycopg.connect(DSN) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id_utilisateur, nom_utilisateur FROM utilisateurs")
-            utilisateurs = cur.fetchall()
-            for utilisateur in utilisateurs:
-                print(f"id utilisateur: {utilisateur[0]}, nom utilisateur: {utilisateur[1]}")
-    
-    print("===============")
-
-def voir_playlist():
-    with psycopg.connect(DSN) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id_playlist, nom_playlist FROM playlists")
-            playlists = cur.fetchall()
-            for playlist in playlists:
-                print(f"id playlist: {playlist[0]}, nom playlist: {playlist[1]}")
-
-
-    print("=======================")
-
-def voir_chanson():
-    with psycopg.connect(DSN) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT * FROM chansons WHERE titre = %s OR artiste = %s OR genre = %s", ())
-            chansons = cur.fetchall()
-            for chanson in chansons:
-                print(f"id : {chanson[0]}, \n titre: {chanson[1]}, \n artiste: {chanson[2]}, \n album: {chanson[3]}, \n duree: {chanson[4]}, \n genre: {chanson[5]}, \n annee_sortie:{chanson[6]}")
-            print("***********")
-
-
-    print("========== FIN DE LA RECHERCHER =============")
+    print("🆗 Chanson ajoutée à la playlist !")
 
 def voir_chanson_playlist(playlist, user=1):
     with psycopg.connect(DSN) as conn:
@@ -193,36 +221,7 @@ def voir_chanson_playlist(playlist, user=1):
             for chanson in chansons:
                 print(chanson)
 
-def modifier_utilisateur(id_user):
-    nom = input("choisissez un nouveau nom d'utilisateur : ")
-    email = input("choisissez un nouvel email : ")
-
-    with psycopg.connect(DSN) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT email FROM utilisateurs WHERE email = %s", (nom,))
-            is_new_playlist = cur.fetchone()
-
-            if is_new_playlist:
-                print("Cet email a déjà été utilisée, veuillez en choisir un autre. modification annulée !")
-                return
-
-            cur.execute("""
-                UPDATE utilisateurs SET nom_utilisateur = %s, email = %s
-                WHERE id_utilisateur = %s;
-            """, (nom, email, id_user))
-
-    print(" 🆗   Utilisateur modifié avec succés !")
-
-def supprimer_utilisateur(id_user):
-
-    with psycopg.connect(DSN) as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                DELETE FROM utilisateurs WHERE id_utilisateur = %s;
-            """, (id_user,))
-
-    print(" 🆗   Utilisateur supprimé avec succés !")
-
+############################################# RECHERCHER
 def rechercher_utilisateur(user_input):
     with psycopg.connect(DSN) as conn:
         with conn.cursor() as cur:
@@ -261,33 +260,41 @@ def rechercher_playlist(user_input):
 
     print("=======================")
 
-def afficher_menu():
-    print("\n===== MENU PLAYLIST =====")
-    print("1 - Créer un utilisateur")
-    print("2 - Créer une playlist")
-    print("3 - Créer une chanson")
-    print("4 - ajouter une chanson à une playlist")
 
-    print("5 - voir les utilisateurs ")
-    print("6 - voir les playlist ")
-    print("7 -  voir les chansons")
-    print("8 -  voir les chansons associées à la playlist")
-    print("9 -  Modifier un utilisateur")
-    print("10 -  Supprimer un utilisateur")
-    print("11 -  Rechercher...")
-    print("12 - Modifier une playlist")
+def afficher_menu():
+    print("\n===== MENU PRINCIPAL =====")
+    print("1 - Gérer les utilisateurs")
+    print("2 - Gérer les playlists")
+    print("3 - Gérer les chansons")
+    print("4 - rechercher...")
     print("0 - Quitter")
+    print()
+
+def afficher_utilisateur_menu():
+    print("\n===== MENU UTILISATEUR =====")
+    print("1 - Créer un utilisateur")
+    print("2 - Modifier un utilisateur")
+    print("3 - Supprimer un utilisateur")
+    print("4 - Voir les utilisateurs")
+    print("0 - Retour")
+    print()
+
+def afficher_playlist_menu():
+    print("\n===== MENU PLAYLIST =====")
+    print("1 - Créer une playlist")
+    print("2 - Voir les playlists")
+    print("3 - Voir les chansons associées aux playlists")
+    print("0 - Retour")
+    print()
+
+def afficher_chanson_menu():
+    print("\n===== MENU CHANSON =====")
+    print("1 - Créer une chanson")
+    print("2 - Voir les chansons")
+    print("0 - Retour")
     print()
 
 def afficher_recherche_menu():
-    print("\n===== MENU PLAYLIST =====")
-    print("1 - un utilisateur")
-    print("2 - une chanson")
-    print("3 - une playlist")
-    print("0 - Quitter")
-    print()
-
-def afficher_suppression_menu():
     print("\n===== MENU PLAYLIST =====")
     print("1 - un utilisateur")
     print("2 - une chanson")
@@ -302,34 +309,50 @@ def ihm():
 
         match choix:
             case "1":
-                creer_utilisateur()
-            case "2":
-                creer_playlist()
-            case "3":
-                creer_chanson()
-            case "4":
-                ajouter_chanson_playlist()
-            case "5":
-                voir_utilisateur()
-            case "6":
-                voir_playlist()
-            case "7":
-                voir_chanson()
-            case "8":
-                voir_playlist()
-                playlist = input("choisissez l'id playlist: ")
-                user = input('choisissez l\'id de l\'utilisateur')
-                voir_chanson_playlist(playlist, user=1)
-            case "9":
-                voir_utilisateur()
-                user = input("choisissez le numéro de l'utilisateur a modifier ")
-                modifier_utilisateur(user)
-            case "10":
-                voir_utilisateur()
-                user = input("choisissez le numéro de l'utilisateur a supprimer ")
-                supprimer_utilisateur(user)
-            case "11":
                 while True:
+                    afficher_utilisateur_menu()
+                    choix_utilisateur = input("Votre choix : ")
+                    match choix_utilisateur:
+                        case "1":
+                            creer_utilisateur()
+                        case "2":
+                            voir_utilisateur()
+                            user = input("choisissez le numéro de l'utilisateur a modifier ")
+                            modifier_utilisateur(user)
+                        case "3":
+                            voir_utilisateur()
+                            user = input("choisissez le numéro de l'utilisateur a supprimer ")
+                            supprimer_utilisateur(user)
+                            pass
+                        case "4":
+                            voir_utilisateur()
+                        case "0":
+                            break
+            case "2":
+                while True:
+                    afficher_playlist_menu()
+                    choix_playlist = input("Votre choix : ")
+                    match choix_playlist:
+                        case "1":
+                            creer_playlist()
+                        case "2":
+                            voir_playlist()
+                        case "3":
+                            ajouter_chanson_playlist()
+                        case "0":
+                            break
+            case "3":
+                while True:
+                    afficher_chanson_menu()
+                    choix_chanson = input("Votre choix : ")
+                    match choix_chanson:
+                        case "1":
+                            creer_chanson()
+                        case "2":
+                            voir_chanson()
+                        case "0":
+                            break
+            case "4":
                     afficher_recherche_menu()
                     choix_recherche = input("que voulez-vous rechercher ? : ")
                     match choix_recherche:
@@ -347,11 +370,6 @@ def ihm():
                             break
                         case _:
                             print("Choix invalide.")
-            case "12":
-                voir_playlist()
-                user = input("choisissez le numéro de l'utilisateur a supprimer ")
-                # TODO modifier plyalist
-                supprimer_utilisateur(user)
 
             case "0":
                 print("Au revoir !")
